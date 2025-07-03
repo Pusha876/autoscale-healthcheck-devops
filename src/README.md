@@ -21,17 +21,22 @@ pip install -r requirements.txt
 
 ### 🚀 Launch Options
 
-#### Option 1: Waitress (Recommended for Windows)
+#### Option 1: Gunicorn (Recommended for Linux/Production)
+```bash
+gunicorn --bind 0.0.0.0:5000 --workers 2 app:app
+```
+
+#### Option 2: Waitress (Recommended for Windows)
 ```bash
 waitress-serve --host=0.0.0.0 --port=5000 app:app
 ```
 
-#### Option 2: Flask Dev Server (Quick & Dirty)
+#### Option 3: Flask Dev Server (Quick & Dirty)
 ```bash
 python app.py
 ```
 
-#### Option 3: Flask CLI (The "Proper" Way)
+#### Option 4: Flask CLI (The "Proper" Way)
 ```bash
 flask run --host=0.0.0.0 --port=5000
 ```
@@ -65,19 +70,31 @@ Perfect for testing:
 ## 🛠️ Tech Stack
 
 - **Flask** - Because sometimes simple is better
+- **Gunicorn** - Production-ready WSGI server for Linux deployments
 - **Waitress** - WSGI server that actually works on Windows
 - **Flask-CORS** - For when your frontend and backend need to talk
 
 ## 🎨 Development Notes
 
 ### Windows Users 💻
-We use Waitress instead of Gunicorn because Gunicorn thinks Windows is "not cool enough" (it lacks Unix-specific modules). Waitress doesn't judge your OS choices.
+We use Waitress for Windows development because Gunicorn thinks Windows is "not cool enough" (it lacks Unix-specific modules). Waitress doesn't judge your OS choices.
 
 ### Linux/Azure Deployment 🐧☁️
-For production deployments on Linux systems, you can totally use Gunicorn:
+For production deployments on Linux systems (like our Azure Container Instance), we use Gunicorn:
 ```bash
+# Production deployment with multiple workers
+gunicorn app:app --bind 0.0.0.0:5000 --workers 2
+
+# Or the simple version
 gunicorn app:app --bind 0.0.0.0:5000
 ```
+
+### 🚀 Current Azure Deployment
+This API is currently running on **Azure Container Instances** with:
+- **OS**: Linux
+- **Server**: Gunicorn with 2 workers
+- **Resources**: 0.5 CPU, 1.5GB RAM
+- **Access**: Public IP with DNS label
 
 ## 🧪 Testing
 

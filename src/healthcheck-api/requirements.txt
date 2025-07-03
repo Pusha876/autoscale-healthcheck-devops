@@ -1,3 +1,4 @@
 flask
-waitress
+gunicorn      # For Linux/Azure deployment
+waitress      # For Windows development
 flask-cors

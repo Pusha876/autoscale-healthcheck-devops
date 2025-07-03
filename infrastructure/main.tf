@@ -30,7 +30,7 @@ resource "azurerm_container_group" "app" {
     commands = [
       "/bin/bash",
       "-c",
-      "pip install flask waitress && python -c \"from flask import Flask, jsonify; import os; app = Flask(__name__); @app.route('/health', methods=['GET']); def health(): return jsonify({'status': 'healthy'}), 200; @app.route('/crash', methods=['GET']); def crash(): os._exit(1); from waitress import serve; serve(app, host='0.0.0.0', port=5000)\""
+      "pip install flask gunicorn flask-cors && python -c \"from flask import Flask, jsonify; import os; app = Flask(__name__); @app.route('/health', methods=['GET']); def health(): return jsonify({'status': 'healthy'}), 200; @app.route('/crash', methods=['GET']); def crash(): os._exit(1)\" > app.py && gunicorn --bind 0.0.0.0:5000 --workers 2 app:app"
     ]
 
     environment_variables = {
