@@ -1,0 +1,93 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  imageName: 'healthcheck-api'
+  containerRegistry: 'autoscalehealthcheckacr.azurecr.io'
+  repositoryName: 'healthcheck-api'
+  resourceGroupName: 'autoscale-rg'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.10'
+      displayName: 'Use Python 3.10'
+
+    - script: |
+        cd src/healthcheck-api
+        pip install -r requirements.txt
+      displayName: 'Install Dependencies'
+
+    - script: |
+        cd src/healthcheck-api
+        python -m pytest tests/ -v
+      displayName: 'Run Unit Tests'
+
+    - task: Docker@2
+      displayName: 'Build and Push Docker Image'
+      inputs:
+        containerRegistry: 'autoscalehealthcheckacr'  # Service connection name
+        repository: '$(repositoryName)'
+        command: 'buildAndPush'
+        Dockerfile: 'src/healthcheck-api/Dockerfile'
+        buildContext: 'src/healthcheck-api'
+        tags: |
+          latest
+          $(Build.BuildNumber)
+
+- stage: Deploy
+  displayName: 'Deploy Infrastructure'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: Deploy
+    displayName: 'Deploy Job'
+    steps:
+    - task: TerraformInstaller@0
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTaskV2@2
+      displayName: 'Terraform Init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: 'infrastructure'
+        backendServiceArm: 'autoscalehealthcheckacr'  # Service connection name
+        backendAzureRmResourceGroupName: '$(resourceGroupName)'
+        backendAzureRmStorageAccountName: 'tfstate$(Build.BuildId)'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'terraform.tfstate'
+
+    - task: TerraformTaskV2@2
+      displayName: 'Terraform Plan'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: 'infrastructure'
+        environmentServiceNameAzureRM: 'autoscalehealthcheckacr'  # Service connection name
+
+    - task: TerraformTaskV2@2
+      displayName: 'Terraform Apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: 'infrastructure'
+        environmentServiceNameAzureRM: 'autoscalehealthcheckacr'  # Service connection name
+
+    - script: |
+        echo "Health Check API deployed successfully!"
+        echo "URL: http://autoscale-healthcheck.westus2.azurecontainer.io:5000/health"
+      displayName: 'Deployment Summary'

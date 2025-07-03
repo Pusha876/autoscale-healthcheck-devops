@@ -12,6 +12,7 @@ variable "app_name" {
   type    = string
   default = "autoscale-healthcheck"
 }
+
 variable "app_service_plan_name" {
   type    = string
   default = "autoscale-plan"

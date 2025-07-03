@@ -8,6 +8,25 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
+data "azurerm_container_registry" "acr" {
+  name                = "autoscalehealthcheckacr"
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_user_assigned_identity" "container_identity" {
+  location            = azurerm_resource_group.rg.location
+  name                = "container-identity"
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_role_assignment" "acr_pull" {
+  scope                = data.azurerm_container_registry.acr.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.container_identity.principal_id
+}
+
+data "azurerm_client_config" "current" {}
+
 resource "azurerm_container_group" "app" {
   name                = var.app_name
   location            = azurerm_resource_group.rg.location
@@ -16,9 +35,15 @@ resource "azurerm_container_group" "app" {
   dns_name_label      = var.app_name
   os_type             = "Linux"
 
+  image_registry_credential {
+    server   = data.azurerm_container_registry.acr.login_server
+    username = data.azurerm_container_registry.acr.admin_username
+    password = data.azurerm_container_registry.acr.admin_password
+  }
+
   container {
     name   = "healthcheck-api"
-    image  = "mcr.microsoft.com/azure-functions/python:4-python3.11-appservice"
+    image  = "${data.azurerm_container_registry.acr.login_server}/healthcheck-api:latest"
     cpu    = "0.5"
     memory = "1.5"
 
@@ -26,12 +51,6 @@ resource "azurerm_container_group" "app" {
       port     = 5000
       protocol = "TCP"
     }
-
-    commands = [
-      "/bin/bash",
-      "-c",
-      "pip install flask gunicorn flask-cors && python -c \"from flask import Flask, jsonify; import os; app = Flask(__name__); @app.route('/health', methods=['GET']); def health(): return jsonify({'status': 'healthy'}), 200; @app.route('/crash', methods=['GET']); def crash(): os._exit(1)\" > app.py && gunicorn --bind 0.0.0.0:5000 --workers 2 app:app"
-    ]
 
     environment_variables = {
       "FLASK_APP" = "app.py"
@@ -41,4 +60,6 @@ resource "azurerm_container_group" "app" {
   tags = {
     environment = "development"
   }
+
+  depends_on = [azurerm_role_assignment.acr_pull]
 }
