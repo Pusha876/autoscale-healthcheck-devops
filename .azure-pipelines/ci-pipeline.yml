@@ -65,10 +65,23 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: |
           # Install Terraform
-          wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-          unzip terraform_1.5.7_linux_amd64.zip
-          sudo mv terraform /usr/local/bin/
+          echo "Installing Terraform..."
+          
+          # Check if terraform is already installed
+          if command -v terraform &> /dev/null; then
+            echo "Terraform is already installed:"
+            terraform version
+          else
+            echo "Terraform not found, installing..."
+            wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+            unzip terraform_1.5.7_linux_amd64.zip
+            sudo mv terraform /usr/local/bin/
+            echo "Terraform installed successfully!"
+          fi
+          
+          # Verify installation
           terraform version
+          echo "Terraform installation verified!"
 
     - task: AzureCLI@2
       displayName: 'Terraform Init'
@@ -79,7 +92,32 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Initialize Terraform
+          echo "Starting Terraform Init..."
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          
+          # Check if main.tf exists
+          if [ ! -f "main.tf" ]; then
+            echo "ERROR: main.tf not found in infrastructure directory!"
+            exit 1
+          fi
+          
+          # Check Azure CLI authentication
+          echo "Checking Azure CLI authentication..."
+          az account show
+          
+          # Initialize Terraform
+          echo "Initializing Terraform..."
           terraform init
+          
+          # Verify initialization
+          if [ -d ".terraform" ]; then
+            echo "SUCCESS: Terraform initialized successfully!"
+          else
+            echo "ERROR: Terraform initialization failed!"
+            exit 1
+          fi
 
     - task: AzureCLI@2
       displayName: 'Terraform Plan'
@@ -90,7 +128,28 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Plan Terraform changes
-          terraform plan -out=tfplan
+          echo "Starting Terraform Plan..."
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          
+          # Check if Terraform is properly initialized
+          if [ ! -d ".terraform" ]; then
+            echo "ERROR: Terraform not initialized! .terraform directory not found."
+            exit 1
+          fi
+          
+          # Run terraform plan with detailed output
+          echo "Running terraform plan..."
+          terraform plan -out=tfplan -var="image_tag=$(Build.BuildNumber)"
+          
+          # Verify plan file was created
+          if [ -f "tfplan" ]; then
+            echo "SUCCESS: Terraform plan created successfully!"
+          else
+            echo "ERROR: Terraform plan file not created!"
+            exit 1
+          fi
 
     - task: AzureCLI@2
       displayName: 'Terraform Apply'
@@ -101,7 +160,21 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Apply Terraform changes
-          terraform apply -auto-approve tfplan
+          echo "Starting Terraform Apply..."
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          
+          # Check if tfplan exists
+          if [ -f "tfplan" ]; then
+            echo "Found tfplan file, proceeding with apply..."
+            terraform apply -auto-approve tfplan
+          else
+            echo "ERROR: tfplan file not found!"
+            echo "Available files:"
+            ls -la
+            exit 1
+          fi
 
     - task: AzureCLI@2
       displayName: 'Get Deployment Output'
@@ -112,10 +185,26 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Get the output URL
-          HEALTH_URL=$(terraform output -raw health_check_url)
-          echo "Health Check API deployed successfully!"
-          echo "URL: $HEALTH_URL"
-          echo "##vso[task.setvariable variable=healthCheckUrl]$HEALTH_URL"
+          echo "Getting deployment outputs..."
+          
+          # Check if terraform state exists
+          if [ ! -f "terraform.tfstate" ]; then
+            echo "WARNING: terraform.tfstate file not found"
+            echo "Attempting to get outputs anyway..."
+          fi
+          
+          # Try to get outputs with error handling
+          if terraform output health_check_url &>/dev/null; then
+            HEALTH_URL=$(terraform output -raw health_check_url)
+            echo "Health Check API deployed successfully!"
+            echo "URL: $HEALTH_URL"
+            echo "##vso[task.setvariable variable=healthCheckUrl]$HEALTH_URL"
+          else
+            echo "ERROR: Could not get health_check_url output"
+            echo "Available outputs:"
+            terraform output || echo "No outputs available"
+            exit 1
+          fi
 
     - script: |
         echo "Deployment completed successfully!"

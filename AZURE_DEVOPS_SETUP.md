@@ -98,14 +98,53 @@ Upon successful completion, the pipeline will:
    - Ensure ACR has admin user enabled
    - Verify Docker service connection credentials
 
-3. **Terraform Fails**:
+3. **Terraform Apply Fails**:
    - Check Azure subscription permissions
    - Verify resource group exists
    - Ensure quota availability for Container Instances
+   - Check if tfplan file exists (common issue)
 
 4. **Tests Fail**:
    - Check if test dependencies are installed
    - Verify test file paths and structure
+
+### Specific Error Solutions
+
+#### "tfplan file not found" Error
+This error occurs when Terraform Plan step fails but the pipeline continues to Apply step:
+
+**Solution**:
+- Check the Terraform Plan step output for errors
+- Verify that the `image_tag` variable is properly set
+- Ensure Azure CLI authentication is working
+- Check if the infrastructure directory contains all required files
+
+#### "Terraform initialization failed" Error
+This happens when Terraform can't initialize properly:
+
+**Solution**:
+- Verify that main.tf exists in the infrastructure directory
+- Check Azure CLI authentication: `az account show`
+- Ensure service principal has proper permissions
+- Check if there are any syntax errors in Terraform files
+
+#### "Could not get health_check_url output" Error
+This occurs when Terraform state is not properly created:
+
+**Solution**:
+- Verify that Terraform Apply completed successfully
+- Check if terraform.tfstate file exists
+- Ensure all resources were created properly
+- Verify that outputs.tf contains the health_check_url output
+
+#### Azure CLI Authentication Issues
+If you see authentication errors:
+
+**Solution**:
+- Verify the Azure Resource Manager service connection is properly configured
+- Check that the service principal has Contributor rights to the subscription
+- Ensure the subscription ID is correct
+- Test the service connection in Azure DevOps
 
 ### Verification Steps
 
