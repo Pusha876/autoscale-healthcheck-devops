@@ -17,3 +17,9 @@ variable "app_service_plan_name" {
   type    = string
   default = "autoscale-plan"
 }
+
+variable "image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Docker image tag to deploy"
+}

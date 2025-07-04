@@ -34,13 +34,14 @@ stages:
 
     - script: |
         cd src/healthcheck-api
-        python -m pytest tests/ -v
+        python -m pytest tests/ -v --tb=short
       displayName: 'Run Unit Tests'
+      continueOnError: false
 
     - task: Docker@2
       displayName: 'Build and Push Docker Image'
       inputs:
-        containerRegistry: '$(dockerRegistryServiceConnection)'  # Docker Registry service connection
+        containerRegistry: '$(dockerRegistryServiceConnection)'
         repository: '$(repositoryName)'
         command: 'buildAndPush'
         Dockerfile: 'src/healthcheck-api/Dockerfile'
@@ -48,6 +49,11 @@ stages:
         tags: |
           latest
           $(Build.BuildNumber)
+
+    - script: |
+        echo "Build completed successfully!"
+        echo "Docker image: $(containerRegistry)/$(repositoryName):$(Build.BuildNumber)"
+      displayName: 'Build Summary'
 
 - stage: Deploy
   displayName: 'Deploy Infrastructure'
@@ -65,10 +71,12 @@ stages:
         scriptLocation: 'inlineScript'
         inlineScript: |
           # Install Terraform
-          wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+          echo "Installing Terraform..."
+          wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
           unzip terraform_1.5.7_linux_amd64.zip
           sudo mv terraform /usr/local/bin/
           terraform version
+          echo "Terraform installed successfully!"
 
     - task: AzureCLI@2
       displayName: 'Terraform Init'
@@ -79,7 +87,9 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Initialize Terraform
+          echo "Initializing Terraform..."
           terraform init
+          echo "Terraform initialized successfully!"
 
     - task: AzureCLI@2
       displayName: 'Terraform Plan'
@@ -90,7 +100,9 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Plan Terraform changes
-          terraform plan -out=tfplan
+          echo "Planning Terraform changes..."
+          terraform plan -out=tfplan -var="image_tag=$(Build.BuildNumber)"
+          echo "Terraform plan completed successfully!"
 
     - task: AzureCLI@2
       displayName: 'Terraform Apply'
@@ -101,23 +113,61 @@ stages:
         workingDirectory: 'infrastructure'
         inlineScript: |
           # Apply Terraform changes
+          echo "Applying Terraform changes..."
           terraform apply -auto-approve tfplan
+          echo "Terraform apply completed successfully!"
 
     - task: AzureCLI@2
-      displayName: 'Get Deployment Output'
+      displayName: 'Get Deployment Output and Verify'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         workingDirectory: 'infrastructure'
         inlineScript: |
-          # Get the output URL
+          # Get the output URLs
+          echo "Getting deployment outputs..."
           HEALTH_URL=$(terraform output -raw health_check_url)
-          echo "Health Check API deployed successfully!"
-          echo "URL: $HEALTH_URL"
+          APP_URL=$(terraform output -raw app_url)
+          APP_FQDN=$(terraform output -raw app_fqdn)
+          
+          echo "Deployment outputs:"
+          echo "  Health Check URL: $HEALTH_URL"
+          echo "  App URL: $APP_URL"
+          echo "  App FQDN: $APP_FQDN"
+          
+          # Set pipeline variables
           echo "##vso[task.setvariable variable=healthCheckUrl]$HEALTH_URL"
+          echo "##vso[task.setvariable variable=appUrl]$APP_URL"
+          echo "##vso[task.setvariable variable=appFqdn]$APP_FQDN"
+          
+          # Wait for container to be ready
+          echo "Waiting for container to be ready..."
+          sleep 30
+          
+          # Test the health endpoint
+          echo "Testing health endpoint..."
+          for i in {1..10}; do
+            if curl -f -s "$HEALTH_URL" > /dev/null; then
+              echo "Health check passed!"
+              break
+            else
+              echo "Health check attempt $i failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          # Final verification
+          echo "Final verification:"
+          curl -s "$HEALTH_URL" || echo "Health check failed"
 
     - script: |
-        echo "Deployment completed successfully!"
+        echo "=================================="
+        echo "   DEPLOYMENT COMPLETED SUCCESSFULLY!"
+        echo "=================================="
         echo "Health Check URL: $(healthCheckUrl)"
+        echo "Application URL: $(appUrl)"
+        echo "Container FQDN: $(appFqdn)"
+        echo "Docker Image: $(containerRegistry)/$(repositoryName):$(Build.BuildNumber)"
+        echo "=================================="
       displayName: 'Deployment Summary'

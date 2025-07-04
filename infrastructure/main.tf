@@ -43,7 +43,7 @@ resource "azurerm_container_group" "app" {
 
   container {
     name   = "healthcheck-api"
-    image  = "${data.azurerm_container_registry.acr.login_server}/healthcheck-api:latest"
+    image  = "${data.azurerm_container_registry.acr.login_server}/healthcheck-api:${var.image_tag}"
     cpu    = "0.5"
     memory = "1.5"
 

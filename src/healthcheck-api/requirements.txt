@@ -2,3 +2,4 @@ flask
 gunicorn      # For Linux/Azure deployment
 waitress      # For Windows development
 flask-cors
+pytest        # For unit testing
