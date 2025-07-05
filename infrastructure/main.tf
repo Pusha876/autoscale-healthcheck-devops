@@ -3,20 +3,20 @@ provider "azurerm" {
   subscription_id = "b2dd5abd-3642-48b8-929e-2cafb8b4257d"
 }
 
-resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
-  location = var.location
+# Use existing resource group instead of creating new one
+data "azurerm_resource_group" "rg" {
+  name = var.resource_group_name
 }
 
 data "azurerm_container_registry" "acr" {
   name                = "autoscalehealthcheckacr"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
 }
 
 resource "azurerm_user_assigned_identity" "container_identity" {
-  location            = azurerm_resource_group.rg.location
+  location            = data.azurerm_resource_group.rg.location
   name                = "container-identity"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
 }
 
 resource "azurerm_role_assignment" "acr_pull" {
@@ -29,8 +29,8 @@ data "azurerm_client_config" "current" {}
 
 resource "azurerm_container_group" "app" {
   name                = var.app_name
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
   ip_address_type     = "Public"
   dns_name_label      = var.app_name
   os_type             = "Linux"

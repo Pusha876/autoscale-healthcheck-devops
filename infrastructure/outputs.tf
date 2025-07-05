@@ -11,5 +11,5 @@ output "app_fqdn" {
 }
 
 output "resource_group_name" {
-  value = azurerm_resource_group.rg.name
+  value = data.azurerm_resource_group.rg.name
 }
