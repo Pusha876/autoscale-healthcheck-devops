@@ -110,6 +110,30 @@ Upon successful completion, the pipeline will:
 
 ### Specific Error Solutions
 
+#### "Resource already exists" Error
+This error occurs when Terraform tries to create a resource that already exists in Azure:
+
+**Error Message**: `Error: A resource with the ID "/subscriptions/.../resourceGroups/..." already exists - to be managed via Terraform this resource needs to be imported into the State`
+
+**Solutions**:
+1. **Use Data Source (Recommended)**: Change from `resource` to `data` in your Terraform configuration
+2. **Import Existing Resource**: Import the existing resource into Terraform state
+3. **Use Different Resource Names**: Modify your configuration to use unique names
+
+**Example Fix**:
+```terraform
+# Instead of creating a new resource group:
+# resource "azurerm_resource_group" "rg" {
+#   name     = var.resource_group_name
+#   location = var.location
+# }
+
+# Use existing resource group:
+data "azurerm_resource_group" "rg" {
+  name = var.resource_group_name
+}
+```
+
 #### "tfplan file not found" Error
 This error occurs when Terraform Plan step fails but the pipeline continues to Apply step:
 

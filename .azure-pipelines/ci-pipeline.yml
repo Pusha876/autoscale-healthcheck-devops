@@ -107,6 +107,12 @@ stages:
           echo "Checking Azure CLI authentication..."
           az account show
           
+          # Clean up any existing state files if they exist and are corrupted
+          if [ -f "terraform.tfstate" ]; then
+            echo "Found existing Terraform state, backing up..."
+            cp terraform.tfstate terraform.tfstate.backup.$(date +%Y%m%d_%H%M%S)
+          fi
+          
           # Initialize Terraform
           echo "Initializing Terraform..."
           terraform init
@@ -168,7 +174,27 @@ stages:
           # Check if tfplan exists
           if [ -f "tfplan" ]; then
             echo "Found tfplan file, proceeding with apply..."
-            terraform apply -auto-approve tfplan
+            
+            # Run terraform apply with error handling
+            if terraform apply -auto-approve tfplan; then
+              echo "SUCCESS: Terraform apply completed successfully!"
+            else
+              echo "ERROR: Terraform apply failed!"
+              echo "Checking for common issues..."
+              
+              # Check if it's a resource already exists error
+              if terraform apply -auto-approve tfplan 2>&1 | grep -q "already exists"; then
+                echo "DETECTED: Resource already exists error"
+                echo "This may require importing existing resources or using data sources"
+                echo "Please check the Terraform configuration and consider using data sources for existing resources"
+              fi
+              
+              # Show terraform state for debugging
+              echo "Current Terraform state:"
+              terraform state list || echo "No state found"
+              
+              exit 1
+            fi
           else
             echo "ERROR: tfplan file not found!"
             echo "Available files:"
