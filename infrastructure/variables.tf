@@ -23,3 +23,9 @@ variable "image_tag" {
   default     = "latest"
   description = "Docker image tag to deploy"
 }
+
+variable "use_existing_identity" {
+  type        = bool
+  default     = false
+  description = "Whether to use existing user-assigned identity or create new one"
+}

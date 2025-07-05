@@ -129,14 +129,25 @@ Error: Current Limit (Basic VMs): 0
 cd infrastructure
 
 # Initialize Terraform
-tf init
-
-# Plan the deployment
-tf plan
+terraform init
 
 # Apply the infrastructure
-tf apply
+terraform apply
 ```
+
+### ⚠️ VERY IMPORTANT: Terraform Initialization
+```bash
+# If you ever set or change modules or backend configuration for Terraform,
+# rerun this command to reinitialize your working directory:
+terraform init -upgrade
+```
+
+**When to use `terraform init -upgrade`:**
+- After changing provider versions
+- When adding new modules
+- After modifying backend configuration
+- When switching between different Terraform versions
+- If you encounter provider or module-related errors
 
 ### 🧪 Test Your Deployment
 ```bash

@@ -84,7 +84,29 @@ stages:
           echo "Terraform installation verified!"
 
     - task: AzureCLI@2
-      displayName: 'Terraform Init'
+      displayName: 'Pre-deployment Resource Check'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        workingDirectory: 'infrastructure'
+        inlineScript: |
+          # Run pre-deployment checks
+          echo "Running pre-deployment resource checks..."
+          
+          # Make the script executable
+          chmod +x ../scripts/pre-deploy.sh
+          
+          # Set environment variables
+          export IMAGE_TAG=$(Build.BuildNumber)
+          
+          # Run the pre-deployment script
+          ../scripts/pre-deploy.sh
+          
+          echo "Pre-deployment checks completed!"
+
+    - task: AzureCLI@2
+      displayName: 'Terraform Init and Import'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'bash'
@@ -124,6 +146,19 @@ stages:
             echo "ERROR: Terraform initialization failed!"
             exit 1
           fi
+          
+          # Import existing resources if they exist
+          echo "Checking for existing resources to import..."
+          
+          # Try to import user-assigned identity if it exists
+          IDENTITY_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/autoscale-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/container-identity"
+          
+          if az identity show --ids "$IDENTITY_ID" > /dev/null 2>&1; then
+            echo "Found existing user-assigned identity, attempting import..."
+            terraform import azurerm_user_assigned_identity.container_identity "$IDENTITY_ID" || echo "Import failed or resource already in state"
+          else
+            echo "User-assigned identity not found, will be created"
+          fi
 
     - task: AzureCLI@2
       displayName: 'Terraform Plan'
@@ -143,6 +178,14 @@ stages:
           if [ ! -d ".terraform" ]; then
             echo "ERROR: Terraform not initialized! .terraform directory not found."
             exit 1
+          fi
+          
+          # Show the terraform.tfvars content
+          if [ -f "terraform.tfvars" ]; then
+            echo "Using terraform.tfvars:"
+            cat terraform.tfvars
+          else
+            echo "No terraform.tfvars found, using defaults"
           fi
           
           # Run terraform plan with detailed output

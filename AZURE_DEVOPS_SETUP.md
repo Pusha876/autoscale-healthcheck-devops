@@ -116,21 +116,35 @@ This error occurs when Terraform tries to create a resource that already exists 
 **Error Message**: `Error: A resource with the ID "/subscriptions/.../resourceGroups/..." already exists - to be managed via Terraform this resource needs to be imported into the State`
 
 **Solutions**:
-1. **Use Data Source (Recommended)**: Change from `resource` to `data` in your Terraform configuration
-2. **Import Existing Resource**: Import the existing resource into Terraform state
-3. **Use Different Resource Names**: Modify your configuration to use unique names
+1. **Smart Resource Management (Implemented)**: The current configuration now handles existing resources automatically
+2. **Import Existing Resources**: Use the import script to bring existing resources into Terraform state
+3. **Use Different Resource Names**: The configuration now uses unique names with random suffixes for deployments
+
+**How It's Fixed**:
+- **Resource Group**: Uses data source instead of creating new
+- **User-Assigned Identity**: Automatically imports if exists, creates if doesn't
+- **Container Groups**: Uses unique names with random suffixes to avoid conflicts
+- **Role Assignments**: Handles conflicts gracefully with lifecycle rules
+
+**Manual Import (if needed)**:
+```bash
+# Navigate to infrastructure directory
+cd infrastructure
+
+# Run the import script
+chmod +x ../scripts/import-existing.sh
+../scripts/import-existing.sh
+
+# Then run terraform plan
+terraform plan
+```
 
 **Example Fix**:
 ```terraform
-# Instead of creating a new resource group:
-# resource "azurerm_resource_group" "rg" {
-#   name     = var.resource_group_name
-#   location = var.location
-# }
-
-# Use existing resource group:
-data "azurerm_resource_group" "rg" {
-  name = var.resource_group_name
+# The configuration now uses:
+resource "azurerm_container_group" "app" {
+  name = "${var.app_name}-${random_string.deployment_id.result}"
+  # This ensures unique names for each deployment
 }
 ```
 
