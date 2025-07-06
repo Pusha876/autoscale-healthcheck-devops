@@ -1,0 +1,70 @@
+// KQL Queries for Azure Container Instance Monitoring
+// Health Check API - Autoscale Project
+
+// 1. Detect Downtime - Look for errors and tracebacks in the last 5 minutes
+ContainerLog
+| where TimeGenerated > ago(5m)
+| where LogEntry contains "Traceback" or LogEntry contains "error"
+| summarize count() by Computer, ContainerID
+
+// 2. Container Instance Logs - All logs from the health check API
+ContainerInstanceLog_CL
+| where TimeGenerated > ago(1h)
+| where ContainerGroup_s == "autoscale-healthcheck"
+| order by TimeGenerated desc
+| limit 100
+
+// 3. Health Check Endpoint Monitoring - HTTP requests to /health
+ContainerInstanceLog_CL
+| where TimeGenerated > ago(1h)
+| where Message contains "/health"
+| where Message contains "GET"
+| summarize RequestCount = count() by bin(TimeGenerated, 5m)
+| render timechart
+
+// 4. Error Rate Analysis - Track HTTP 4xx and 5xx responses
+ContainerInstanceLog_CL
+| where TimeGenerated > ago(1h)
+| where Message contains "HTTP"
+| extend StatusCode = extract(@"HTTP/\d\.\d\"\s(\d{3})", 1, Message)
+| where StatusCode >= "400"
+| summarize ErrorCount = count() by StatusCode, bin(TimeGenerated, 5m)
+| render timechart
+
+// 5. Container Resource Usage - CPU and Memory metrics
+Perf
+| where TimeGenerated > ago(1h)
+| where Computer contains "autoscale-healthcheck"
+| where CounterName in ("% Processor Time", "Available MBytes")
+| summarize avg(CounterValue) by CounterName, bin(TimeGenerated, 5m)
+| render timechart
+
+// 6. Application Startup Detection - Look for Flask app startup messages
+ContainerInstanceLog_CL
+| where TimeGenerated > ago(24h)
+| where Message contains "Running on" or Message contains "Flask"
+| project TimeGenerated, Message
+| order by TimeGenerated desc
+
+// 7. Downtime Alert Query - No logs received in the last 10 minutes
+let LogThreshold = 10m;
+ContainerInstanceLog_CL
+| where TimeGenerated > ago(LogThreshold)
+| where ContainerGroup_s == "autoscale-healthcheck"
+| summarize LastLogTime = max(TimeGenerated)
+| extend MinutesSinceLastLog = datetime_diff('minute', now(), LastLogTime)
+| where MinutesSinceLastLog > 10
+| project MinutesSinceLastLog, LastLogTime, AlertMessage = "No logs received - potential downtime"
+
+// 8. Performance Baseline - Response times and request patterns
+ContainerInstanceLog_CL
+| where TimeGenerated > ago(24h)
+| where Message contains "GET /health"
+| extend ResponseTime = extract(@"(\d+\.?\d*)\s*ms", 1, Message)
+| where isnotnull(ResponseTime)
+| summarize 
+    AvgResponseTime = avg(toreal(ResponseTime)),
+    MaxResponseTime = max(toreal(ResponseTime)),
+    RequestCount = count()
+    by bin(TimeGenerated, 1h)
+| render timechart
