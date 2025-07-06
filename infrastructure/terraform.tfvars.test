@@ -1,0 +1,7 @@
+# Test terraform.tfvars to resolve duplicate variable issue
+use_existing_identity = true
+enable_managed_identity_auth = false
+resource_group_name = "autoscale-rg"
+location = "westus2"
+app_name = "autoscale-healthcheck"
+image_tag = "20250706.1"
