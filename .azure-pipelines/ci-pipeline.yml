@@ -110,11 +110,12 @@ stages:
           # Simple permission check - try to list role assignments
           if az role assignment list --all --query "[0]" > /dev/null 2>&1; then
             echo "✅ Service principal has role assignment permissions"
-            echo "enable_managed_identity_auth = true" >> terraform.tfvars
+            # Update the existing variable instead of appending
+            sed -i 's/enable_managed_identity_auth = false/enable_managed_identity_auth = true/' terraform.tfvars
           else
             echo "⚠️  Service principal lacks role assignment permissions"
             echo "Will use ACR admin credentials instead (this is fine for dev/test)"
-            echo "enable_managed_identity_auth = false" >> terraform.tfvars
+            # Keep the existing false value from pre-deploy script
           fi
           
           echo "Final terraform.tfvars:"

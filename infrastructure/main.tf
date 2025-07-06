@@ -29,20 +29,9 @@ resource "azurerm_user_assigned_identity" "container_identity" {
   }
 }
 
-# Role assignment for ACR pull (optional - only if service principal has permissions)
-resource "azurerm_role_assignment" "acr_pull" {
-  count                = var.enable_managed_identity_auth ? 1 : 0
-  scope                = data.azurerm_container_registry.acr.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.container_identity.principal_id
-  
-  lifecycle {
-    ignore_changes = [role_definition_id]
-  }
-}
-
-# Random suffix for unique container group names
+# Random suffix for unique container group names (only when not using existing)
 resource "random_string" "deployment_id" {
+  count   = var.use_existing_identity ? 0 : 1
   length  = 6
   special = false
   upper   = false
@@ -53,13 +42,13 @@ resource "random_string" "deployment_id" {
   }
 }
 
-# Container group with unique naming to avoid conflicts
+# Container group with conditional naming
 resource "azurerm_container_group" "app" {
-  name                = "${var.app_name}-${random_string.deployment_id.result}"
+  name                = var.use_existing_identity ? var.app_name : "${var.app_name}-${random_string.deployment_id[0].result}"
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
   ip_address_type     = "Public"
-  dns_name_label      = "${var.app_name}-${random_string.deployment_id.result}"
+  dns_name_label      = var.use_existing_identity ? var.app_name : "${var.app_name}-${random_string.deployment_id[0].result}"
   os_type             = "Linux"
 
   # Use admin credentials for ACR authentication (simpler, no role permissions needed)
@@ -98,7 +87,6 @@ resource "azurerm_container_group" "app" {
     environment = "development"
     managed_by  = "terraform"
     build_id    = var.image_tag
-    deployment_id = random_string.deployment_id.result
   }
   
   lifecycle {
