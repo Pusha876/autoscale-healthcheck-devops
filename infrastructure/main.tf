@@ -29,8 +29,9 @@ resource "azurerm_user_assigned_identity" "container_identity" {
   }
 }
 
-# Role assignment for ACR pull with unique name
+# Role assignment for ACR pull (optional - only if service principal has permissions)
 resource "azurerm_role_assignment" "acr_pull" {
+  count                = var.enable_managed_identity_auth ? 1 : 0
   scope                = data.azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_user_assigned_identity.container_identity.principal_id
@@ -61,10 +62,20 @@ resource "azurerm_container_group" "app" {
   dns_name_label      = "${var.app_name}-${random_string.deployment_id.result}"
   os_type             = "Linux"
 
+  # Use admin credentials for ACR authentication (simpler, no role permissions needed)
   image_registry_credential {
     server   = data.azurerm_container_registry.acr.login_server
     username = data.azurerm_container_registry.acr.admin_username
     password = data.azurerm_container_registry.acr.admin_password
+  }
+
+  # Optional: Use managed identity if enabled and role assignment exists
+  dynamic "identity" {
+    for_each = var.enable_managed_identity_auth ? [1] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [azurerm_user_assigned_identity.container_identity.id]
+    }
   }
 
   container {
@@ -89,8 +100,6 @@ resource "azurerm_container_group" "app" {
     build_id    = var.image_tag
     deployment_id = random_string.deployment_id.result
   }
-
-  depends_on = [azurerm_role_assignment.acr_pull]
   
   lifecycle {
     create_before_destroy = true

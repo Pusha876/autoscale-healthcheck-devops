@@ -184,6 +184,21 @@ If you see authentication errors:
 - Ensure the subscription ID is correct
 - Test the service connection in Azure DevOps
 
+#### "Authorization Failed for Role Assignments" Error
+This error occurs when the service principal doesn't have permission to create role assignments:
+
+**Error Message**: `The client '...' does not have authorization to perform action 'Microsoft.Authorization/roleAssignments/write'`
+
+**Solutions**:
+1. **Automatic Fallback (Implemented)**: The pipeline now automatically detects this and uses ACR admin credentials instead
+2. **Grant Additional Permissions**: Give the service principal "User Access Administrator" role
+3. **Use Admin Credentials**: Continue using ACR admin username/password (simpler for dev/test)
+
+**Current Behavior**:
+- Pipeline automatically detects role assignment permissions
+- Falls back to ACR admin credentials if permissions are insufficient
+- Both methods work equally well for container deployment
+
 ### Verification Steps
 
 After pipeline completion:

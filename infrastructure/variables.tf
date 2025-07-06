@@ -29,3 +29,9 @@ variable "use_existing_identity" {
   default     = false
   description = "Whether to use existing user-assigned identity or create new one"
 }
+
+variable "enable_managed_identity_auth" {
+  type        = bool
+  default     = false
+  description = "Enable managed identity authentication for ACR (requires role assignment permissions)"
+}

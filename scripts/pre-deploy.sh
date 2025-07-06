@@ -48,6 +48,7 @@ echo "📝 Creating terraform.tfvars with detected settings..."
 cat > terraform.tfvars << EOF
 # Auto-generated terraform.tfvars based on existing resources
 use_existing_identity = $USE_EXISTING_IDENTITY
+enable_managed_identity_auth = false
 resource_group_name = "autoscale-rg"
 location = "westus2"
 app_name = "autoscale-healthcheck"

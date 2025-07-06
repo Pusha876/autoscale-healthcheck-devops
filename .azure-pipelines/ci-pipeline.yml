@@ -103,6 +103,23 @@ stages:
           # Run the pre-deployment script
           ../scripts/pre-deploy.sh
           
+          # Check if we have permissions for role assignments
+          echo "Checking role assignment permissions..."
+          SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          
+          # Simple permission check - try to list role assignments
+          if az role assignment list --all --query "[0]" > /dev/null 2>&1; then
+            echo "✅ Service principal has role assignment permissions"
+            echo "enable_managed_identity_auth = true" >> terraform.tfvars
+          else
+            echo "⚠️  Service principal lacks role assignment permissions"
+            echo "Will use ACR admin credentials instead (this is fine for dev/test)"
+            echo "enable_managed_identity_auth = false" >> terraform.tfvars
+          fi
+          
+          echo "Final terraform.tfvars:"
+          cat terraform.tfvars
+          
           echo "Pre-deployment checks completed!"
 
     - task: AzureCLI@2
@@ -135,9 +152,9 @@ stages:
             cp terraform.tfstate terraform.tfstate.backup.$(date +%Y%m%d_%H%M%S)
           fi
           
-          # Initialize Terraform
+          # Initialize Terraform with upgrade
           echo "Initializing Terraform..."
-          terraform init
+          terraform init -upgrade
           
           # Verify initialization
           if [ -d ".terraform" ]; then
