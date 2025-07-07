@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoScale HealthCheck - Architecture</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .banner {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .title {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        .tagline {
+            font-size: 1.2em;
+            font-style: italic;
+            opacity: 0.8;
+        }
+        
+        .architecture {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .component {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .component h3 {
+            color: #FFD700;
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        
+        .flow {
+            text-align: center;
+            margin: 30px 0;
+            font-size: 1.1em;
+        }
+        
+        .arrow {
+            font-size: 2em;
+            color: #FFD700;
+        }
+        
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .tech-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <div class="title">🚀 AutoScale HealthCheck</div>
+        <div class="subtitle">Infrastructure & App Recovery Platform</div>
+        <div class="tagline">Automated Monitoring • Self-Healing • Zero Downtime</div>
+        
+        <div class="tech-stack">
+            <span class="tech-item">🐳 Docker</span>
+            <span class="tech-item">🏗️ Terraform</span>
+            <span class="tech-item">☁️ Azure</span>
+            <span class="tech-item">🐍 Python</span>
+            <span class="tech-item">📊 Monitoring</span>
+            <span class="tech-item">🔄 Auto-Heal</span>
+        </div>
+    </div>
+    
+    <div class="architecture">
+        <div class="component">
+            <h3>🏗️ CI/CD Pipeline</h3>
+            <ul>
+                <li>Azure DevOps</li>
+                <li>Automated Build & Test</li>
+                <li>Docker Image Creation</li>
+                <li>Container Registry Push</li>
+            </ul>
+        </div>
+        
+        <div class="component">
+            <h3>🐳 Container Runtime</h3>
+            <ul>
+                <li>Azure Container Instances</li>
+                <li>Python Flask API</li>
+                <li>Health Check Endpoints</li>
+                <li>Auto-scaling Ready</li>
+            </ul>
+        </div>
+        
+        <div class="component">
+            <h3>📊 Monitoring & Alerts</h3>
+            <ul>
+                <li>Azure Monitor</li>
+                <li>Log Analytics Workspace</li>
+                <li>KQL Query Rules</li>
+                <li>Real-time Alerting</li>
+            </ul>
+        </div>
+        
+        <div class="component">
+            <h3>🔄 Auto-Healing</h3>
+            <ul>
+                <li>Azure Functions</li>
+                <li>Multiple Trigger Types</li>
+                <li>Health Verification</li>
+                <li>Automated Recovery</li>
+            </ul>
+        </div>
+        
+        <div class="component">
+            <h3>🔒 Security & Identity</h3>
+            <ul>
+                <li>Managed Identity</li>
+                <li>RBAC Permissions</li>
+                <li>No Hardcoded Secrets</li>
+                <li>Principle of Least Privilege</li>
+            </ul>
+        </div>
+        
+        <div class="component">
+            <h3>🏗️ Infrastructure as Code</h3>
+            <ul>
+                <li>Terraform Configuration</li>
+                <li>Version Controlled</li>
+                <li>Reproducible Deployments</li>
+                <li>State Management</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="flow">
+        <div>Code Push <span class="arrow">→</span> Build <span class="arrow">→</span> Deploy <span class="arrow">→</span> Monitor <span class="arrow">→</span> Alert <span class="arrow">→</span> Heal</div>
+    </div>
+</body>
+</html>
