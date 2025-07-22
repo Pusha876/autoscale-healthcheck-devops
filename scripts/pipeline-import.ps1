@@ -43,6 +43,8 @@ function Import-IfNeeded {
         try {
             Invoke-Expression $AzureCheckCommand | Out-Null
             Write-Host "Azure $ResourceName exists, importing to Terraform state..." -ForegroundColor Cyan
+            # Set environment variable to prevent path conversion issues
+            $env:MSYS_NO_PATHCONV = "1"
             terraform import $TerraformResource $AzureResourceId
             Write-Host "$ResourceName import completed successfully" -ForegroundColor Green
         }

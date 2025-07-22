@@ -35,7 +35,8 @@ import_if_needed() {
         # Check if the Azure resource actually exists
         if eval $azure_check_command > /dev/null 2>&1; then
             echo "Azure $resource_name exists, importing to Terraform state..."
-            terraform import $terraform_resource "$azure_resource_id"
+            # Use MSYS_NO_PATHCONV=1 to prevent Git Bash path conversion on Windows
+            MSYS_NO_PATHCONV=1 terraform import $terraform_resource "$azure_resource_id"
             echo "$resource_name import completed successfully"
         else
             echo "Azure $resource_name does not exist, will be created by Terraform"
