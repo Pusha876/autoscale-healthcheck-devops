@@ -6,7 +6,7 @@
 set -e
 
 echo "=== Pipeline Import Script ==="
-echo "Checking if container group needs to be imported..."
+echo "Checking if resources need to be imported..."
 
 # Source variables from terraform.tfvars
 USE_EXISTING=$(grep "use_existing_identity" terraform.tfvars | cut -d' ' -f3)
@@ -17,28 +17,52 @@ echo "USE_EXISTING_IDENTITY: $USE_EXISTING"
 echo "RESOURCE_GROUP: $RESOURCE_GROUP"
 echo "APP_NAME: $APP_NAME"
 
-if [[ "$USE_EXISTING" == "true" ]]; then
-    echo "use_existing_identity is true, attempting to import existing container group..."
+# Function to import resource if it exists in Azure but not in Terraform state
+import_if_needed() {
+    local terraform_resource=$1
+    local azure_resource_id=$2
+    local azure_check_command=$3
+    local resource_name=$4
     
-    CONTAINER_GROUP_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ContainerInstance/containerGroups/$APP_NAME"
+    echo "Checking $resource_name..."
     
     # Check if resource already exists in state
-    if terraform state show azurerm_container_group.app > /dev/null 2>&1; then
-        echo "Container group already in Terraform state, skipping import"
+    if terraform state show $terraform_resource > /dev/null 2>&1; then
+        echo "$resource_name already in Terraform state, skipping import"
     else
-        echo "Importing existing container group: $CONTAINER_GROUP_ID"
+        echo "$resource_name not in state, checking if it exists in Azure..."
         
         # Check if the Azure resource actually exists
-        if az container show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" > /dev/null 2>&1; then
-            echo "Azure container group exists, importing to Terraform state..."
-            terraform import azurerm_container_group.app "$CONTAINER_GROUP_ID"
-            echo "Import completed successfully"
+        if eval $azure_check_command > /dev/null 2>&1; then
+            echo "Azure $resource_name exists, importing to Terraform state..."
+            terraform import $terraform_resource "$azure_resource_id"
+            echo "$resource_name import completed successfully"
         else
-            echo "Azure container group does not exist, will be created by Terraform"
+            echo "Azure $resource_name does not exist, will be created by Terraform"
         fi
     fi
-else
-    echo "use_existing_identity is false, no import needed"
+}
+
+# Import container group if needed
+if [[ "$USE_EXISTING" == "true" ]]; then
+    CONTAINER_GROUP_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ContainerInstance/containerGroups/$APP_NAME"
+    import_if_needed "azurerm_container_group.app" "$CONTAINER_GROUP_ID" "az container show --name $APP_NAME --resource-group $RESOURCE_GROUP" "Container Group"
 fi
+
+# Import Log Analytics Workspace if it exists
+LAW_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.OperationalInsights/workspaces/autoscale-law"
+import_if_needed "azurerm_log_analytics_workspace.log" "$LAW_ID" "az monitor log-analytics workspace show --resource-group $RESOURCE_GROUP --workspace-name autoscale-law" "Log Analytics Workspace"
+
+# Import User Assigned Identity if it exists
+IDENTITY_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ManagedIdentity/userAssignedIdentities/container-identity"
+import_if_needed "azurerm_user_assigned_identity.container_identity" "$IDENTITY_ID" "az identity show --name container-identity --resource-group $RESOURCE_GROUP" "User Assigned Identity"
+
+# Import Function App if it exists
+FUNCTION_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/sites/autoscale-heal-func"
+import_if_needed "azurerm_linux_function_app.auto_heal" "$FUNCTION_ID" "az functionapp show --name autoscale-heal-func --resource-group $RESOURCE_GROUP" "Function App"
+
+# Import Service Plan if it exists
+PLAN_ID="/subscriptions/b2dd5abd-3642-48b8-929e-2cafb8b4257d/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Web/serverFarms/autoscale-heal-plan"
+import_if_needed "azurerm_service_plan.function_plan" "$PLAN_ID" "az appservice plan show --name autoscale-heal-plan --resource-group $RESOURCE_GROUP" "Service Plan"
 
 echo "=== Pipeline Import Script Completed ==="
