@@ -51,13 +51,18 @@ resource "random_string" "deployment_id" {
   }
 }
 
+# Local value for container group name to avoid conditional reference issues
+locals {
+  container_group_name = var.use_existing_identity ? var.app_name : "${var.app_name}-${random_string.deployment_id[0].result}"
+}
+
 # Container group with conditional naming
 resource "azurerm_container_group" "app" {
-  name                = var.use_existing_identity ? var.app_name : "${var.app_name}-${random_string.deployment_id[0].result}"
+  name                = local.container_group_name
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
   ip_address_type     = "Public"
-  dns_name_label      = var.use_existing_identity ? var.app_name : "${var.app_name}-${random_string.deployment_id[0].result}"
+  dns_name_label      = local.container_group_name
   os_type             = "Linux"
 
   # Use admin credentials for ACR authentication (simpler, no role permissions needed)
@@ -100,6 +105,10 @@ resource "azurerm_container_group" "app" {
   
   lifecycle {
     create_before_destroy = true
+    # Ignore changes to tags that might be managed externally
+    ignore_changes = [
+      tags["last_updated"]
+    ]
   }
 }
 
